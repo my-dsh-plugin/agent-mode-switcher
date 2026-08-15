@@ -7,7 +7,10 @@
  * mounted-able preset the deployment composes. Picking one recomposes the
  * session's agent from that preset; the conversation and its history stay in
  * the same session. The chip refuses interaction while the agent runs a turn
- * (the host refuses the swap regardless).
+ * (the host refuses the swap regardless). The same component can register in
+ * the composer tool row with `blankOnly: true`, so a new blank conversation
+ * (whose header is hidden) still has a switch entry and shows the deployment
+ * default until a preset is committed.
  */
 
 import { useEffect, useState } from 'react'
@@ -15,12 +18,12 @@ import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { IconAgentPresetOutline16, IconChevronDownOutline14, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
-// Type-only: pulls the ui-conversation SlotMap merge (the header actions).
+// Type-only: pulls the ui-conversation SlotMap merge (header actions + input row).
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { ModeSwitchState } from './mode-switch-store.ts'
 import css from './AgentModeSwitch.module.css'
 
-/** Registration-side business face for the header switcher. */
+/** Registration-side business face for the header/composer switcher. */
 export interface AgentModeSwitchInjected {
   hooks: {
     /** Roster snapshot bound by the renderer as useModeSwitch. */
@@ -30,6 +33,12 @@ export interface AgentModeSwitchInjected {
   load: () => Promise<void>
   /** Switch one session's agent preset; resolves the failure message, or undefined on success. */
   switchMode: (sessionId: SessionId, presetId: string) => Promise<string | undefined>
+  /**
+   * Render only while the session is still blank. The composer registration
+   * uses this so a new blank conversation keeps a switch entry even though
+   * the session header is hidden in the blank hero phase.
+   */
+  blankOnly?: boolean
 }
 
 /** Full component props. */
@@ -41,13 +50,14 @@ export type AgentModeSwitchProps =
 /**
  * Render this session's agent preset as a switchable chip.
  * @param props - composed slot props.
- * @returns the chip, or null when the session records no preset.
+ * @returns the chip, or null for a non-blank-only registration on an active session.
  */
 export function AgentModeSwitch({
-  sessionId, useSessions, useSession, useModeSwitch, load, switchMode, t,
+  sessionId, useSessions, useSession, useModeSwitch, load, switchMode, t, blankOnly,
 }: AgentModeSwitchProps) {
   const preset = useSessions(state => state.byId[sessionId]?.agentPreset)
   const running = useSession(state => state.running)
+  const blank = useSession(state => state.blank)
   const options = useModeSwitch(state => state.options)
   const switching = useModeSwitch(state => state.switching)
   const [open, setOpen] = useState(false)
@@ -55,18 +65,22 @@ export function AgentModeSwitch({
   const [failed, setFailed] = useState<string | null>(null)
 
   useEffect(() => {
-    // Deployments that compose no presets never label anything, so the roster
-    // is only worth a request once a session reports one.
-    if (preset !== undefined) void load()
-  }, [preset, load])
+    // Load once on mount: the roster is needed both to name the session's
+    // preset and to offer the deployment default on a still-blank session.
+    void load()
+  }, [load])
 
-  if (preset === undefined) return null
+  // The composer registration only supplements the hidden blank-session
+  // header; on an active session it stays out of the tool row.
+  if (blankOnly === true && !blank) return null
 
   const busy = running || switching
-  const current = options.find(option => option.id === preset)
-  const label = current?.name ?? preset
+  const currentId = preset ?? options.find(option => option.isDefault)?.id
+  const current = options.find(option => option.id === currentId)
+  const label = current?.name ?? currentId ?? t('noMode')
+  const empty = options.length === 0
   const handleSelect = (id: string): void => {
-    if (id === preset || busy) return
+    if (id === currentId || busy) return
     setPending(id)
     setFailed(null)
     void switchMode(sessionId, id).then(error => {
@@ -85,10 +99,10 @@ export function AgentModeSwitch({
           return {
             id: option.id,
             label: option.trust === 'user' ? `${name} · ${t('userTrust')}` : name,
-            disabled: option.id === preset,
+            disabled: option.id === currentId,
           }
         })}
-        selectedId={preset}
+        selectedId={currentId ?? ''}
         onSelect={handleSelect}
         align="end"
         portal
@@ -98,7 +112,7 @@ export function AgentModeSwitch({
             className={css.seat}
             aria-haspopup="menu"
             aria-expanded={open}
-            disabled={busy}
+            disabled={busy || empty}
             title={failed ?? (running ? t('runningHint') : current?.description ?? t('headerHint'))}
             onClick={() => { setOpen(!open) }}
           >
