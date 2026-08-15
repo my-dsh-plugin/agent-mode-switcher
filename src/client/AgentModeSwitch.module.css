@@ -1,0 +1,68 @@
+/* Session-header agent-preset switcher: replaces the shipped read-only label
+   with a menu that recomposes the current session's agent from another preset. */
+
+.switcher {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.seat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 180px;
+  height: 22px;
+  padding: 0 6px 0 4px;
+  border: none;
+  border-radius: 6px;
+  background: var(--dsw-alias-fill-tsp-secondary);
+  font-size: 12px;
+  line-height: 22px;
+  color: var(--dsw-alias-label-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.seat:not(:disabled):hover,
+.seat[aria-expanded='true'] {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.seat:disabled {
+  cursor: default;
+  color: var(--dsw-alias-label-quaternary);
+}
+
+.icon {
+  flex: none;
+  opacity: 0.7;
+}
+
+.chevron {
+  flex: none;
+  opacity: 0.7;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A rejected switch's message, floated under the chip. The title also carries
+   it, so a clipped header cannot lose the reason entirely. */
+.error {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 30;
+  max-width: 280px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-overlay);
+  color: var(--dsw-alias-state-error-primary);
+  font-size: 12px;
+  line-height: 16px;
+  box-shadow: var(--dsw-shadow-lv2);
+}

@@ -1,0 +1,8 @@
+# agent-mode-switcher's dsh profile bundle patch (declared by the
+# `dsh.bundle.patch` manifest field): applied over the earlier layers when
+# this package appears in a profile's `dsh.profile.bundles` list. It inserts
+# the plugin; the plugin has no configuration today, so no config overrides
+# are tunable here.
+- insert:
+    - id: agent-mode-switcher
+      name: dsh-agent-mode-switcher
