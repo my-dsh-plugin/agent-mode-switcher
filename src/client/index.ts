@@ -48,9 +48,13 @@ export function apply(ctx: ClientContext): void {
 
   ctx.slots.inject('conversation.session.header.actions', () => ctx.slots.register({
     name: 'conversation.session.header.actions',
-    // The shipped cell, reused: registering the same id replaces the
-    // read-only label with this switcher.
+    // Shadow the shipped cell instead of colliding with it: the same id at
+    // the same priority would make the second registration throw and roll
+    // back ui-agent-preset's whole effect (taking the hero chip with it).
+    // A lower priority renders our switcher while the shipped label stays
+    // registered but hidden.
     id: 'agent-preset',
+    priority: -1,
     // Static session context occupies the header's leading negative-order band.
     order: -10,
     locale: NS,
