@@ -53,7 +53,15 @@ export class ModeSwitchController {
   /** Header snapshot the renderer subscribes to. */
   readonly store: SnapshotStore<ModeSwitchState> = createSnapshotStore(INITIAL)
 
-  constructor(private readonly api: Pick<IApiClient, 'agentPresets'>) {}
+  constructor(
+    private readonly api: Pick<IApiClient, 'agentPresets'>,
+    /**
+     * Publish a committed switch into the session list, so the header moves
+     * with the composition instead of waiting for the forwarded event or the
+     * next full list refresh (the seat's own select-echo precedent).
+     */
+    private readonly onApplied?: (sessionId: SessionId, agentPreset: string) => void,
+  ) {}
 
   private set(patch: Partial<ModeSwitchState>): void {
     this.store.set({ ...this.store.getSnapshot(), ...patch })
@@ -105,6 +113,9 @@ export class ModeSwitchController {
     }
     this.set({ switching: false })
     if (!response.result.ok) return response.result.error.message
+    // The select echo is the commit point: record it immediately so the
+    // header label reflects the new composition without a page refresh.
+    this.onApplied?.(sessionId, response.result.value.agentPreset)
     return undefined
   }
 }

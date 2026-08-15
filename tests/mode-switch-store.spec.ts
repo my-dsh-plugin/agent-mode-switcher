@@ -89,6 +89,30 @@ describe('ModeSwitchController', () => {
     expect(select).toHaveBeenCalledWith({ sessionId: SESSION, agentPreset: 'minimal' })
   })
 
+  it('publishes the select echo so the header moves without a refresh', async () => {
+    const applied: Array<[SessionId, string]> = []
+    const controller = new ModeSwitchController(fakeApi({
+      select: vi.fn(() => Promise.resolve(okValue({ agentPreset: 'code' }))),
+    }), (sessionId, agentPreset) => { applied.push([sessionId, agentPreset]) })
+
+    const failure = await controller.switch(SESSION, 'code')
+
+    expect(failure).toBeUndefined()
+    expect(applied).toEqual([[SESSION, 'code']])
+  })
+
+  it('does not publish when the switch is refused', async () => {
+    const applied: string[] = []
+    const controller = new ModeSwitchController(fakeApi({
+      select: vi.fn(() => Promise.resolve(errResponse('session "s1" is running a turn'))),
+    }), (_sessionId, agentPreset) => { applied.push(agentPreset) })
+
+    const failure = await controller.switch(SESSION, 'minimal')
+
+    expect(failure).toBe('session "s1" is running a turn')
+    expect(applied).toEqual([])
+  })
+
   it('flips the busy flag for the duration of a switch', async () => {
     let release: () => void = () => {}
     const gate = new Promise<void>(resolve => { release = resolve })

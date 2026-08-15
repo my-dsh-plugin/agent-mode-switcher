@@ -30,7 +30,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 const NS = 'agent-mode-switch'
 
 /** Required services (cordis fiber inject). */
-export const inject = ['slots', 'locale', 'connection', 'remote']
+export const inject = ['slots', 'locale', 'connection', 'remote', 'sessions']
 
 /**
  * Mount the session-header agent-preset switcher.
@@ -40,7 +40,11 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'agent-mode-switch: dictionaries')
 
   const connection = ctx.get('connection') as ConnectionHandle
-  const controller = new ModeSwitchController(connection.api)
+  const controller = new ModeSwitchController(connection.api, (sessionId, agentPreset) => {
+    // The select echo is the commit point; mirror the shipped seat so the
+    // header label moves without relying on the forwarded event.
+    ctx.sessions.noteAgentPreset(sessionId, agentPreset)
+  })
 
   ctx.slots.inject('conversation.session.header.actions', () => ctx.slots.register({
     name: 'conversation.session.header.actions',

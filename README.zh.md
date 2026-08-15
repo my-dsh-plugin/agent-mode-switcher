@@ -13,7 +13,9 @@ DeepSeek Harness 插件:模型回答完毕后,在当前会话中切换 agent pre
    `conversation.session.header.actions` 单元格,id `agent-preset`)。
 2. 选择其他模式走标准 `agentPreset.select` RPC,把当前会话的 agent 重新组装到
    目标 preset。会话、历史与 workspace 原地不动——只换工具/提示词组合,并且
-   选择会写进会话日志,resume 或 fork 时重建同一模式。
+   选择会写进会话日志,resume 或 fork 时重建同一模式。select 的应答会立即
+   更新会话摘要(与随附 seat 的做法一致),标题栏芯片无需刷新页面即可显示
+   新模式。
 3. 模型回答中芯片禁用,宿主在回合运行期间也会拒绝切换。
 
 ## 依赖

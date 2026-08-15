@@ -17,7 +17,9 @@ that label is read-only once the conversation started, because
    recomposes the session's agent from that preset. The conversation, its
    history, and its workspace stay exactly where they are — only the
    toolset/prompt composition changes, recorded in the session log so a
-   resume or fork rebuilds the same mode.
+   resume or fork rebuilds the same mode. The select echo updates the
+   session summary immediately (the shipped seat's own pattern), so the
+   header chip reflects the new mode without a page refresh.
 3. The chip is disabled while the model is answering and the host refuses the
    swap during a running turn regardless.
 
