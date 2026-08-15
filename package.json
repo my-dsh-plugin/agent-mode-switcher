@@ -11,8 +11,7 @@
   "scripts": {
     "build": "tsc -b && tsdown && tsdown --config tsdown.client.config.ts",
     "test": "vitest run",
-    "typecheck": "tsc -b --pretty false && tsc -p tsconfig.client.json --pretty false",
-    "prepare": "tsdown --config tsdown.prepare.config.ts"
+    "typecheck": "tsc -b --pretty false && tsc -p tsconfig.client.json --pretty false"
   },
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -31,7 +30,10 @@
     "lib/index.js",
     "lib/client.js",
     "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
     "src",
+    "patches",
+    "scripts",
     "cordis.patch.yml"
   ],
   "license": "Apache-2.0",

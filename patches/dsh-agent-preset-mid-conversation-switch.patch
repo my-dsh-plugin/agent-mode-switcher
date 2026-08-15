@@ -1,0 +1,127 @@
+diff --git a/packages/host/apiproxy/src/api-proxy.ts b/packages/host/apiproxy/src/api-proxy.ts
+index 51d17db55e..27322bd386 100644
+--- a/packages/host/apiproxy/src/api-proxy.ts
++++ b/packages/host/apiproxy/src/api-proxy.ts
+@@ -3115,9 +3115,12 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
+         })
+       },
+ 
+-      // Recomposing is limited to a blank session because a started
+-      // conversation's history was produced under its preset's tools; the
+-      // agent and the session survive, only the composition is swapped.
++      // Recomposing swaps the live composition; the agent and the session
++      // survive, only the composition changes. A running turn is refused —
++      // the mode-switcher UI switches only once the model finished answering
++      // — because a mid-turn swap would change the tool schemas the running
++      // request was assembled against. History produced under the previous
++      // composition is the caller's trade-off to own.
+       async select(request) {
+         const { sessionId, agentPreset } = request.payload
+         const presets = ctx.get('agentPresets')
+@@ -3133,11 +3136,11 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
+         const { agent } = found
+         const swap = async (): Promise<RpcResponse<{ agentPreset: string }>> => {
+           // Re-read inside the queue: an earlier switch may have run, and a
+-          // conversation may have started, since this request arrived.
+-          if (!sessionBlank(agent.session)) {
++          // turn may have started, since this request arrived.
++          if (agent.status === 'running') {
+             return err(request, {
+               code: 'agent-preset-locked',
+-              message: `session "${sessionId}" has already started; its agent preset is fixed`,
++              message: `session "${sessionId}" is running a turn; its agent preset is fixed until the turn ends`,
+               details: { sessionId, agentPreset },
+             })
+           }
+diff --git a/packages/host/apiproxy/src/api/agent-presets.ts b/packages/host/apiproxy/src/api/agent-presets.ts
+index 76f5c05355..726a26400d 100644
+--- a/packages/host/apiproxy/src/api/agent-presets.ts
++++ b/packages/host/apiproxy/src/api/agent-presets.ts
+@@ -63,10 +63,12 @@ export interface AgentPresetsApi {
+   /**
+    * Recompose one session's agent from a different preset.
+    *
+-   * Allowed only while the session is blank — no turn has run. Once a
+-   * conversation starts, its history was produced under that preset's tools,
+-   * and swapping them would leave logged tool calls the new composition cannot
+-   * make; the attempt answers `agent-preset-locked`.
++   * The agent and the session survive the swap; only the composition changes,
++   * and the log records the new preset so a resume rebuilds the same one.
++   * A turn in flight is refused with `agent-preset-locked`: a mid-answer swap
++   * would change the tool schemas the running request was assembled against.
++   * Switching a started conversation is the caller's trade-off — history
++   * produced under the previous composition may name tools it no longer has.
+    */
+   select(request: RpcRequest<{ sessionId: SessionId; agentPreset: string }>):
+   Promise<RpcResponse<{ agentPreset: string }>>
+diff --git a/packages/host/apiproxy/tests/api-proxy-agent-preset.spec.ts b/packages/host/apiproxy/tests/api-proxy-agent-preset.spec.ts
+index 072fd2ab2e..5f21350ae8 100644
+--- a/packages/host/apiproxy/tests/api-proxy-agent-preset.spec.ts
++++ b/packages/host/apiproxy/tests/api-proxy-agent-preset.spec.ts
+@@ -1,8 +1,8 @@
+ /**
+- * A session's agent preset is fixed at creation. The gateway records the
+- * resolved id on the header and refuses to adopt the identity under a different
+- * one, because the session's history was produced under that preset's tools:
+- * rebuilding it differently would replay tool calls the new agent cannot make.
++ * A session's agent preset is recorded at creation, and a later selection may
++ * swap it: the gateway writes the resolved id on the header, logs every later
++ * selection, and refuses a swap while the agent runs a turn — the composition
++ * the running request was assembled against must not change mid-answer.
+  */
+ 
+ import { mkdtempSync, realpathSync } from 'node:fs'
+@@ -411,7 +411,7 @@ describe('agentPreset.select', () => {
+     const { api, ctx } = await harness(['standard', 'minimal'])
+     await api.sessions.create(request({ sessionId: SessionId('sel-race'), agentPreset: 'standard' }))
+ 
+-    // Both pass the blank check; unserialized, the second unmount finds no
++    // Both pass the running check; unserialized, the second unmount finds no
+     // record because the first already removed it, and two compositions end up
+     // in one agent layer. The client's busy flag is not enforcement.
+     const [first, second] = await Promise.all([
+@@ -427,12 +427,14 @@ describe('agentPreset.select', () => {
+     expect(resolveSessionPreset(session)).toBe('standard')
+   })
+ 
+-  it('refuses once the conversation has started', async () => {
++  it('refuses while the agent is running a turn', async () => {
+     const { api, ctx } = await harness(['standard', 'minimal'])
+     await api.sessions.create(request({ sessionId: SessionId('sel-2'), agentPreset: 'standard' }))
+-    // One turn is enough: the history from here on was produced under
+-    // `standard`'s tools, and a swap would strand those tool calls.
+-    ctx.sessions.get(SessionId('sel-2'))?.append('turn/start', { turn: 0 })
++    // A turn in flight means the current request was assembled against this
++    // preset's tool schemas; swapping mid-answer would strand that request.
++    const agent = ctx.agents.get(SessionId('sel-2'))
++    if (agent === undefined) throw new Error('unreachable')
++    ;(agent as { status: 'idle' | 'running' }).status = 'running'
+ 
+     const response = await api.agentPresets.select(
+       request({ sessionId: SessionId('sel-2'), agentPreset: 'minimal' }))
+@@ -442,6 +444,25 @@ describe('agentPreset.select', () => {
+     expect(response.result.error.code).toBe('agent-preset-locked')
+   })
+ 
++  it('switches a started session once its turn finished', async () => {
++    const { api, ctx } = await harness(['standard', 'minimal'])
++    await api.sessions.create(request({ sessionId: SessionId('sel-5'), agentPreset: 'standard' }))
++    // The conversation has produced history, but the agent is idle: the
++    // composition swap is the mode-switcher feature's whole point, and the
++    // log records it so a resume rebuilds the new one.
++    ctx.sessions.get(SessionId('sel-5'))?.append('turn/start', { turn: 0 })
++
++    const response = await api.agentPresets.select(
++      request({ sessionId: SessionId('sel-5'), agentPreset: 'minimal' }))
++
++    expect(response.result.ok).toBe(true)
++    if (!response.result.ok) throw new Error('unreachable')
++    expect(response.result.value.agentPreset).toBe('minimal')
++    const session = ctx.sessions.get(SessionId('sel-5'))
++    if (session === undefined) throw new Error('unreachable')
++    expect(resolveSessionPreset(session)).toBe('minimal')
++  })
++
+   it('reports an unknown preset without disturbing the session', async () => {
+     const { api } = await harness(['standard'])
+     await api.sessions.create(request({ sessionId: SessionId('sel-3') }))
