@@ -3,9 +3,7 @@
  * shipped read-only agent-preset label in the session header (the
  * `conversation.session.header.actions` cell, id `agent-preset`) with a live
  * switcher: pick another preset and the session's agent is recomposed from
- * it, the conversation continuing in the same session. A second registration
- * in the composer tool row keeps the switch entry available while a new blank
- * conversation is still in the hero phase (where the session header is hidden).
+ * it, the conversation continuing in the same session.
  *
  * @module dsh-agent-mode-switcher/client
  */
@@ -57,24 +55,6 @@ export function apply(ctx: ClientContext): void {
     order: -10,
     locale: NS,
     inject: (): AgentModeSwitchInjected => ({
-      hooks: {
-        modeSwitch: controller.store,
-      },
-      load: () => controller.load(),
-      switchMode: (sessionId: SessionId, presetId: string) => controller.switch(sessionId, presetId),
-    }),
-  }, AgentModeSwitch))
-
-  // Blank-session fallback: the session header is hidden during the blank
-  // hero phase, so put a compact switcher in the composer tool row while a
-  // new blank conversation has no committed preset yet.
-  ctx.slots.inject('conversation.input.left', () => ctx.slots.register({
-    name: 'conversation.input.left',
-    id: 'agent-mode-switch',
-    order: 0,
-    locale: NS,
-    inject: (): AgentModeSwitchInjected => ({
-      blankOnly: true,
       hooks: {
         modeSwitch: controller.store,
       },

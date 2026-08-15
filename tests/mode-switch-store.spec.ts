@@ -59,7 +59,7 @@ describe('ModeSwitchController', () => {
     await controller.load()
 
     expect(controller.store.getSnapshot().options).toEqual([
-      { id: 'standard', trust: 'system', name: 'Standard mode', description: 'Full coding agent', isDefault: true },
+      { id: 'standard', trust: 'system', name: 'Standard mode', description: 'Full coding agent' },
     ])
   })
 

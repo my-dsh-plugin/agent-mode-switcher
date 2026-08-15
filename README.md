@@ -21,9 +21,7 @@ that label is read-only once the conversation started, because
    session summary immediately (the shipped seat's own pattern), so the
    header chip reflects the new mode without a page refresh.
 3. The chip is disabled while the model is answering and the host refuses the
-   swap during a running turn regardless. A new blank conversation (whose
-   session header is hidden in the hero phase) gets a compact switcher in the
-   composer tool row, showing the deployment default until a mode is chosen.
+   swap during a running turn regardless.
 
 ## Requirements
 

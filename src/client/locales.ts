@@ -2,7 +2,7 @@
 
 /** Locale keys this surface renders. */
 export type AgentModeSwitchKey =
-  | 'headerHint' | 'runningHint' | 'switching' | 'userTrust' | 'noMode'
+  | 'headerHint' | 'runningHint' | 'switching' | 'userTrust'
 
 /** English copy. */
 export const en: Record<AgentModeSwitchKey, string> = {
@@ -10,7 +10,6 @@ export const en: Record<AgentModeSwitchKey, string> = {
   runningHint: 'Answering now — switch once the model finishes',
   switching: 'Switching…',
   userTrust: 'Custom',
-  noMode: 'No mode selected',
 }
 
 /** The dictionary key face other client modules read. */
@@ -22,5 +21,4 @@ export const zh: Record<Dictionary, string> = {
   runningHint: '模型回答中，完成后可切换模式',
   switching: '切换中…',
   userTrust: '自定义',
-  noMode: '未选择模式',
 }

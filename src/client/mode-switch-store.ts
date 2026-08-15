@@ -36,8 +36,6 @@ export interface AgentPresetOption {
   name?: string
   /** One sentence on what the preset is for. */
   description?: string
-  /** Whether a session that names no preset gets this one. */
-  isDefault?: boolean
 }
 
 /** Mode-switch header snapshot. */
@@ -94,7 +92,6 @@ export class ModeSwitchController {
           trust: preset.trust,
           ...preset.name === undefined ? {} : { name: preset.name },
           ...preset.description === undefined ? {} : { description: preset.description },
-          ...preset.isDefault === undefined ? {} : { isDefault: preset.isDefault },
         })),
     })
   }
