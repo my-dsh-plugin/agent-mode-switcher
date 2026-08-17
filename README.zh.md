@@ -93,6 +93,24 @@ pnpm dsh plugin add --profile web github:my-dsh-plugin/agent-mode-switcher
 - 芯片完全不见 → 插件没有进入当前 profile 的 bundle 层(重新 `dsh plugin add`,
   检查 bundles 列表)。
 
+### DeepSeek Harness Desktop(桌面端)一键安装
+
+桌面端用户既不需要 harness checkout,也不需要打核心补丁:桌面端 harness 由 my-dsh-plugin
+fork 构建,已内置会话中切换 agent-preset 的支持。在**普通终端**执行一次(不要在 App 自带
+的 harness 会话里跑——那里的应用安装目录和 App 数据目录是沙箱/只读的,macOS 尤其如此):
+
+```sh
+bash <(curl -Ls https://raw.githubusercontent.com/my-dsh-plugin/agent-mode-switcher/main/scripts/install-desktop.sh) --restart
+```
+
+脚本幂等:从 GitHub 拉取插件(预编译 `lib/`,无需构建);若需要则把
+`"agent-mode-switcher"` 加入内嵌 harness 的 `WEB_SETTINGS_NAMESPACES` 白名单;装入桌面
+web profile 并注册 bundle;`--restart` 重启 App。之后会话标题栏出现 agent-preset 切换芯片。
+可用环境变量覆盖:`DSH_DESKTOP_APP`、`DSH_DESKTOP_HOME`、`DSH_SKILL_SOURCE_DIR`。
+
+> 使用已发布桌面包的最终用户无需任何手动步骤 —— 升级重启即可;插件已 seed,白名单已在
+> 随包 harness 中。
+
 ## 维护
 
 补丁基于当前 api-proxy 的 select 守卫,harness 上游移动后需要重新生成并验证:
